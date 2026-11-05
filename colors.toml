@@ -1,0 +1,36 @@
+mode = "dark"
+
+# Star Trek: The Next Generation, 2369 Okuda palette.
+# Atomic tangerine is the frame, tanoi is the text, black is the field.
+accent = "#ff9900"
+selection = "#3a2618"
+muted = "#8d6b52"
+
+background = "#000000"
+dark_background = "#000000"
+darker_background = "#000000"
+lighter_background = "#1c130c"
+
+foreground = "#ffcc99"
+dark_foreground = "#c48a5a"
+light_foreground = "#ffe2c4"
+bright_foreground = "#ffff99"
+
+active_border_color = "#ff9900"
+active_tab_background = "#ff9900"
+
+red = "#cc6666"
+yellow = "#ffcc66"
+orange = "#ff9900"
+green = "#99cc99"
+cyan = "#99ccff"
+blue = "#9999ff"
+magenta = "#cc99cc"
+brown = "#bb6622"
+
+bright_red = "#dd6644"
+bright_yellow = "#ffff99"
+bright_green = "#ccffcc"
+bright_cyan = "#ccddff"
+bright_blue = "#99ccff"
+bright_magenta = "#ff99cc"
