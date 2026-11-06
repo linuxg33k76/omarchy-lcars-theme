@@ -3,7 +3,9 @@
 # fastfetch logo, screensaver, and fastfetch colors back when it is not.
 # The about.txt backup stays in the branding directory so a relative symlink
 # still resolves. The stardate plugin is its own widget on the right side of
-# the bar, and it stays after a later theme change.
+# the bar, and it stays after a later theme change. The Christian Faith
+# verse watcher is paused while LCARS is active so it does not replace the
+# warp screensaver, and started again when another theme is selected.
 
 set -euo pipefail
 
@@ -86,6 +88,28 @@ print("added")
 PY
 }
 
+pause_verse_watch() {
+  local unit="omarchy-verse-watch.service"
+  [[ -f $HOME/.config/systemd/user/$unit ]] || return 0
+  mkdir -p "$BACKUP_DIR"
+  if [[ ! -f $BACKUP_DIR/verse-watch-enabled ]]; then
+    local state
+    state=$(systemctl --user is-enabled "$unit" 2>/dev/null || true)
+    if [[ $state == enabled ]]; then
+      : >"$BACKUP_DIR/verse-watch-enabled"
+    fi
+  fi
+  systemctl --user disable --now "$unit" >/dev/null 2>&1 || true
+}
+
+resume_verse_watch() {
+  local unit="omarchy-verse-watch.service"
+  if [[ -f $BACKUP_DIR/verse-watch-enabled && -f $HOME/.config/systemd/user/$unit ]]; then
+    systemctl --user enable --now "$unit" >/dev/null 2>&1 || true
+    rm -f "$BACKUP_DIR/verse-watch-enabled"
+  fi
+}
+
 remove_stardate() {
   python3 - "$SHELL_JSON" <<'PY'
 import pathlib
@@ -123,6 +147,7 @@ apply_lcars() {
       cp -a "$BRAND/screensaver.txt" "$BRAND/screensaver.txt.pre-lcars"
     fi
   fi
+  pause_verse_watch
   cp "$THEME_DIR/screensaver.txt" "$BRAND/screensaver.txt"
 
   if [[ ! -f $FF_CONFIG && -n $FF_STOCK && -f $FF_STOCK ]]; then
@@ -162,6 +187,7 @@ restore_previous() {
   if [[ -e $BRAND/screensaver.txt.pre-lcars ]]; then
     mv "$BRAND/screensaver.txt.pre-lcars" "$BRAND/screensaver.txt"
   fi
+  resume_verse_watch
   if [[ -f $BACKUP_DIR/fastfetch-created ]]; then
     rm -f "$FF_CONFIG" "$BACKUP_DIR/fastfetch-created"
   elif [[ -f $BACKUP_DIR/fastfetch.config.jsonc ]]; then

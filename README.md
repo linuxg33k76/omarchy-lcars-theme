@@ -45,7 +45,7 @@ omarchy theme set lcars
 
 `hooks/lcars-branding` runs from `omarchy hook install theme-set`. While LCARS is the active theme it:
 
-- Copies `about.txt` to `~/.config/omarchy/branding/about.txt`, which is the fastfetch logo, and `screensaver.txt` to the screensaver branding file.
+- Copies `about.txt` to `~/.config/omarchy/branding/about.txt`, which is the fastfetch logo, and `screensaver.txt` to the screensaver branding file. If the Christian Faith verse watcher is enabled, the hook pauses it so the warp starfield stays up, and starts it again when you leave LCARS.
 - Sets fastfetch logo colors 1 through 9 to the LCARS golds. The insignia uses slots 2, 3, and 9. Stock Omarchy only defines slot 1.
 - Installs `plugins/samurai.stardate` and places that widget on the right side of the top bar, separate from the clock.
 
