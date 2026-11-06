@@ -2,7 +2,7 @@
 
 An [Omarchy](https://omarchy.org/) theme in the style of the LCARS panels from *Star Trek: The Next Generation*. The palette is Michael Okuda's 2369 set: a black field, atomic tangerine (`#ff9900`), and tanoi text (`#ffcc99`).
 
-The wallpapers use the television elbow frame, with station buttons down the left rail and the ship's name on the bottom bar. The ready room wallpaper is dedicated to Sir Patrick Stewart. Fastfetch gets a gold Starfleet insignia. The screensaver is the view ahead at warp factor 7, with the *U.S.S. Enterprise*, NCC-1701-D, under the starfield.
+The wallpapers use the television elbow frame, with station buttons down the left rail and the ship's name on the bottom bar. The ready room wallpaper is dedicated to Sir Patrick Stewart. Fastfetch gets a gold Starfleet insignia.
 
 ## Screenshots
 
@@ -45,16 +45,31 @@ omarchy theme set lcars
 
 `hooks/lcars-branding` runs from `omarchy hook install theme-set`. While LCARS is the active theme it:
 
-- Copies `about.txt` to `~/.config/omarchy/branding/about.txt`, which is the fastfetch logo, and `screensaver.txt` to the screensaver branding file. If the Christian Faith verse watcher is enabled, the hook pauses it so the warp starfield stays up, and starts it again when you leave LCARS.
+- Copies `about.txt` to `~/.config/omarchy/branding/about.txt`, which is the fastfetch logo.
 - Sets fastfetch logo colors 1 through 9 to the LCARS golds. The insignia uses slots 2, 3, and 9. Stock Omarchy only defines slot 1.
 - Installs `plugins/samurai.stardate` and places that widget on the right side of the top bar, separate from the clock.
 
-Leaving LCARS for another theme puts the previous logo, screensaver, and fastfetch colors back. The stardate stays on the bar. Take it out of the bar layout if you do not want it on other themes.
+Leaving LCARS for another theme puts the previous logo and fastfetch colors back. If an earlier version of the hook replaced the screensaver, that previous screensaver is restored too. The stardate stays on the bar. Take it out of the bar layout if you do not want it on other themes.
 
-## Stardate
+## Stardate plugin
 
-`samurai.stardate` is its own bar widget. It sits on the right side of the top bar, and the clock keeps the day and the time. The widget reads today's date 340 years ahead and shows it as a Next Generation stardate, one decimal place, for example `STARDATE 43843.4`. Stardate 0 is 1 January 2323, and one year is 1000 units. The number is drawn in the bar's active color. The static stardate on the wallpapers, 41153.7, is the day Captain Picard takes command in *Encounter at Farpoint*.
+`plugins/samurai.stardate` is a top-bar widget. It sits on the right side of the bar, separate from the clock, and the clock keeps the day and the time. The number is drawn in the bar's active color. It reads today's date 340 years ahead and shows a Next Generation stardate, one decimal place, for example `STARDATE 43843.4`. Stardate 0 is 1 January 2323, and one year is 1000 units. The static stardate on the wallpapers, 41153.7, is the day Captain Picard takes command in *Encounter at Farpoint*.
 
-## Warp screensaver
+Install the theme, copy the plugin into Omarchy's plugin directory, then enable it:
 
-`screensaver.txt` is the view forward at warp factor 7: streaks radiating from the center, with the ship's name and registry underneath. Omarchy plays that picture in Alacritty, Ghostty, Foot, or Kitty. Preview it with `omarchy-launch-screensaver force`.
+```bash
+omarchy theme install https://github.com/linuxg33k76/omarchy-lcars-theme.git
+mkdir -p ~/.config/omarchy/plugins
+cp -a ~/.config/omarchy/themes/lcars/plugins/samurai.stardate ~/.config/omarchy/plugins/
+omarchy-shell shell rescanPlugins
+omarchy plugin enable samurai.stardate --section right --index 0
+```
+
+From a checkout at `~/code/omarchy-lcars-theme`, copy that directory instead of the theme path. The theme hook does this copy on its own when LCARS is applied.
+
+Remove it with:
+
+```bash
+omarchy plugin disable samurai.stardate
+omarchy plugin remove samurai.stardate --yes
+```

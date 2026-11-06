@@ -1,11 +1,12 @@
 #!/bin/bash
 # Apply LCARS branding while that theme is active, and put the previous
-# fastfetch logo, screensaver, and fastfetch colors back when it is not.
+# fastfetch logo and fastfetch colors back when it is not.
 # The about.txt backup stays in the branding directory so a relative symlink
 # still resolves. The stardate plugin is its own widget on the right side of
-# the bar, and it stays after a later theme change. The Christian Faith
-# verse watcher is paused while LCARS is active so it does not replace the
-# warp screensaver, and started again when another theme is selected.
+# the bar, and it stays after a later theme change. This hook no longer
+# installs a screensaver. If an older version replaced one, that backup is
+# restored when another theme is selected, and a verse watcher paused for
+# that screensaver is started again then.
 
 set -euo pipefail
 
@@ -88,20 +89,6 @@ print("added")
 PY
 }
 
-pause_verse_watch() {
-  local unit="omarchy-verse-watch.service"
-  [[ -f $HOME/.config/systemd/user/$unit ]] || return 0
-  mkdir -p "$BACKUP_DIR"
-  if [[ ! -f $BACKUP_DIR/verse-watch-enabled ]]; then
-    local state
-    state=$(systemctl --user is-enabled "$unit" 2>/dev/null || true)
-    if [[ $state == enabled ]]; then
-      : >"$BACKUP_DIR/verse-watch-enabled"
-    fi
-  fi
-  systemctl --user disable --now "$unit" >/dev/null 2>&1 || true
-}
-
 resume_verse_watch() {
   local unit="omarchy-verse-watch.service"
   if [[ -f $BACKUP_DIR/verse-watch-enabled && -f $HOME/.config/systemd/user/$unit ]]; then
@@ -130,7 +117,7 @@ PY
 apply_lcars() {
   mkdir -p "$BACKUP_DIR" "$BRAND"
 
-  if [[ ! -f $THEME_DIR/about.txt || ! -f $THEME_DIR/screensaver.txt ]]; then
+  if [[ ! -f $THEME_DIR/about.txt ]]; then
     echo "LCARS branding files are not in $THEME_DIR" >&2
     return 0
   fi
@@ -141,14 +128,6 @@ apply_lcars() {
     fi
   fi
   cp "$THEME_DIR/about.txt" "$BRAND/about.txt"
-
-  if [[ ! -e $BRAND/screensaver.txt.pre-lcars ]]; then
-    if [[ -e $BRAND/screensaver.txt ]]; then
-      cp -a "$BRAND/screensaver.txt" "$BRAND/screensaver.txt.pre-lcars"
-    fi
-  fi
-  pause_verse_watch
-  cp "$THEME_DIR/screensaver.txt" "$BRAND/screensaver.txt"
 
   if [[ ! -f $FF_CONFIG && -n $FF_STOCK && -f $FF_STOCK ]]; then
     mkdir -p "$(dirname "$FF_CONFIG")"
