@@ -56,9 +56,10 @@ BarWidget {
     anchors.fill: parent
     bar: root.bar
     text: root.displayText
+    foreground: root.bar ? root.bar.urgent : "#ff9900"
     labelVisible: true
     hasVisualContent: root.displayText !== ""
-    horizontalMargin: root.vertical ? 2 : 6
+    horizontalMargin: root.vertical ? 2 : 8
     verticalPadding: 8.75
     tooltipText: "Stardate"
     pressFeedbackButtons: Qt.NoButton
