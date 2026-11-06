@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "samurai.stardate",
+  "name": "Stardate",
+  "version": "1.0.0",
+  "author": "samurai",
+  "description": "TNG stardate beside the clock. Today's date is read 340 years on, the usual way a 24th-century stardate is shown for a real clock.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Stardate",
+    "description": "TNG stardate next to the day and time",
+    "category": "Time",
+    "allowMultiple": false
+  }
+}

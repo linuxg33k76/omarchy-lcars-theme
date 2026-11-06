@@ -1,0 +1,195 @@
+#!/bin/bash
+# Apply LCARS branding while that theme is active, and put the previous
+# fastfetch logo, screensaver, and fastfetch colors back when it is not.
+# The about.txt backup stays in the branding directory so a relative symlink
+# still resolves. The stardate plugin is installed beside the clock and left
+# in place after a later theme change.
+
+set -euo pipefail
+
+THEME="${1:-}"
+BRAND="$HOME/.config/omarchy/branding"
+THEME_DIR="$HOME/.config/omarchy/themes/lcars"
+FF_CONFIG="$HOME/.config/fastfetch/config.jsonc"
+FF_STOCK="/etc/fastfetch/config.jsonc"
+SHELL_JSON="$HOME/.config/omarchy/shell.json"
+SHELL_STOCK="${OMARCHY_PATH:-/usr/share/omarchy}/config/omarchy/shell.json"
+BACKUP_DIR="$HOME/.local/state/omarchy/lcars-branding"
+PLUGIN_SRC="$THEME_DIR/plugins/samurai.stardate"
+PLUGIN_DEST="$HOME/.config/omarchy/plugins/samurai.stardate"
+
+apply_fastfetch_colors() {
+  python3 - "$FF_CONFIG" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+try:
+    with open(path) as handle:
+        data = json.load(handle)
+except (OSError, json.JSONDecodeError):
+    sys.exit(1)
+logo = data.setdefault("logo", {})
+colors = logo.get("color")
+if not isinstance(colors, dict):
+    colors = {}
+colors.update({
+    "1": "#ff9900",
+    "2": "#ffcc99",
+    "3": "#ffcc66",
+    "4": "#cc99cc",
+    "5": "#9999ff",
+    "6": "#99ccff",
+    "7": "#ff9966",
+    "8": "#cc6666",
+    "9": "#ffff99",
+})
+logo["color"] = colors
+with open(path, "w") as handle:
+    json.dump(data, handle, indent=2)
+    handle.write("\n")
+PY
+}
+
+place_stardate() {
+  python3 - "$SHELL_JSON" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text()
+if '"samurai.stardate"' in text:
+    print("present")
+    raise SystemExit(0)
+
+snippet = '\n        {\n          "id": "samurai.stardate"\n        }'
+idx = text.find('"centerEnd"')
+if idx >= 0:
+    bracket = text.find("[", idx)
+    if bracket < 0:
+        print("skipped")
+        raise SystemExit(0)
+    rest = text[bracket + 1 :]
+    i = 0
+    while i < len(rest) and rest[i] in " \t\r\n":
+        i += 1
+    if rest[i : i + 1] == "]":
+        insert = snippet + "\n      "
+    else:
+        insert = snippet + ","
+    text = text[: bracket + 1] + insert + text[bracket + 1 :]
+else:
+    marker = text.find('"right"')
+    if marker < 0:
+        print("skipped")
+        raise SystemExit(0)
+    line_start = text.rfind("\n", 0, marker) + 1
+    indent = text[line_start:marker]
+    block = (
+        f'{indent}"centerEnd": [\n'
+        f'{indent}  {{\n'
+        f'{indent}    "id": "samurai.stardate"\n'
+        f'{indent}  }}\n'
+        f'{indent}],\n'
+    )
+    text = text[:line_start] + block + text[line_start:]
+path.write_text(text)
+print("added")
+PY
+}
+
+remove_stardate() {
+  python3 - "$SHELL_JSON" <<'PY'
+import pathlib
+import re
+import sys
+
+path = pathlib.Path(sys.argv[1])
+if not path.is_file():
+    raise SystemExit(0)
+text = path.read_text()
+pattern = r'\n[ \t]*\{\n[ \t]*"id": "samurai.stardate"\n[ \t]*\},?'
+text, count = re.subn(pattern, "", text, count=1)
+if count:
+    path.write_text(text)
+PY
+}
+
+apply_lcars() {
+  mkdir -p "$BACKUP_DIR" "$BRAND"
+
+  if [[ ! -f $THEME_DIR/about.txt || ! -f $THEME_DIR/screensaver.txt ]]; then
+    echo "LCARS branding files are not in $THEME_DIR" >&2
+    return 0
+  fi
+
+  if [[ ! -e $BRAND/about.txt.pre-lcars && ! -L $BRAND/about.txt.pre-lcars ]]; then
+    if [[ -e $BRAND/about.txt || -L $BRAND/about.txt ]]; then
+      mv "$BRAND/about.txt" "$BRAND/about.txt.pre-lcars"
+    fi
+  fi
+  cp "$THEME_DIR/about.txt" "$BRAND/about.txt"
+
+  if [[ ! -e $BRAND/screensaver.txt.pre-lcars ]]; then
+    if [[ -e $BRAND/screensaver.txt ]]; then
+      cp -a "$BRAND/screensaver.txt" "$BRAND/screensaver.txt.pre-lcars"
+    fi
+  fi
+  cp "$THEME_DIR/screensaver.txt" "$BRAND/screensaver.txt"
+
+  if [[ ! -f $FF_CONFIG && -n $FF_STOCK && -f $FF_STOCK ]]; then
+    mkdir -p "$(dirname "$FF_CONFIG")"
+    cp "$FF_STOCK" "$FF_CONFIG"
+    : >"$BACKUP_DIR/fastfetch-created"
+  elif [[ -f $FF_CONFIG && ! -f $BACKUP_DIR/fastfetch.config.jsonc && ! -f $BACKUP_DIR/fastfetch-created ]]; then
+    cp -a "$FF_CONFIG" "$BACKUP_DIR/fastfetch.config.jsonc"
+  fi
+  if [[ -f $FF_CONFIG ]]; then
+    apply_fastfetch_colors || echo "LCARS left the fastfetch config unchanged." >&2
+  fi
+
+  if [[ -d $PLUGIN_SRC ]]; then
+    mkdir -p "$PLUGIN_DEST"
+    cp -a "$PLUGIN_SRC/." "$PLUGIN_DEST/"
+    omarchy-shell -q shell rescanPlugins >/dev/null 2>&1 || true
+  fi
+
+  if [[ ! -f $SHELL_JSON && -f $SHELL_STOCK ]]; then
+    mkdir -p "$(dirname "$SHELL_JSON")"
+    cp "$SHELL_STOCK" "$SHELL_JSON"
+    : >"$BACKUP_DIR/shell-json-created"
+  fi
+  if [[ -f $SHELL_JSON && ! -f $BACKUP_DIR/stardate-added ]]; then
+    if [[ $(place_stardate) == "added" ]]; then
+      : >"$BACKUP_DIR/stardate-added"
+    fi
+  fi
+}
+
+restore_previous() {
+  if [[ -e $BRAND/about.txt.pre-lcars || -L $BRAND/about.txt.pre-lcars ]]; then
+    rm -f "$BRAND/about.txt"
+    mv "$BRAND/about.txt.pre-lcars" "$BRAND/about.txt"
+  fi
+  if [[ -e $BRAND/screensaver.txt.pre-lcars ]]; then
+    mv "$BRAND/screensaver.txt.pre-lcars" "$BRAND/screensaver.txt"
+  fi
+  if [[ -f $BACKUP_DIR/fastfetch-created ]]; then
+    rm -f "$FF_CONFIG" "$BACKUP_DIR/fastfetch-created"
+  elif [[ -f $BACKUP_DIR/fastfetch.config.jsonc ]]; then
+    mv "$BACKUP_DIR/fastfetch.config.jsonc" "$FF_CONFIG"
+  fi
+  if [[ -f $BACKUP_DIR/shell-json-created ]]; then
+    rm -f "$SHELL_JSON" "$BACKUP_DIR/shell-json-created" "$BACKUP_DIR/stardate-added"
+  elif [[ -f $BACKUP_DIR/stardate-added ]]; then
+    remove_stardate || true
+    rm -f "$BACKUP_DIR/stardate-added"
+  fi
+  rmdir "$BACKUP_DIR" 2>/dev/null || true
+}
+
+if [[ $THEME == "lcars" ]]; then
+  apply_lcars
+elif [[ -e $BRAND/about.txt.pre-lcars || -L $BRAND/about.txt.pre-lcars || -e $BRAND/screensaver.txt.pre-lcars || -d $BACKUP_DIR ]]; then
+  restore_previous
+fi
